@@ -1,0 +1,318 @@
+DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Gráficos de Barras</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        h2 {
+            font-size: 1.2rem;
+            color: #34495e;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        .input-group input[type="text"],
+        .input-group input[type="number"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        .input-group input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-add {
+            background-color: #2ecc71;
+            color: white;
+            margin-top: 10px;
+        }
+        .btn-add:hover {
+            background-color: #27ae60;
+        }
+        .btn-remove {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .btn-remove:hover {
+            background-color: #c0392b;
+        }
+        .btn-download {
+            background-color: #3498db;
+            color: white;
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            margin-top: 20px;
+        }
+        .btn-download:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        .custom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .field-group label {
+            font-weight: 500;
+            color: #7f8c8d;
+        }
+        .field-group input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        @media (max-width: 600px) {
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .custom-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generador de Gráficos de Barras</h1>
+
+        <!-- Sección de Datos -->
+        <div class="section">
+            <h2>1. Ingresa tus datos</h2>
+            <div id="dataRows">
+                <!-- Las filas se generan dinámicamente -->
+            </div>
+            <button id="addRow" class="btn btn-add">+ Agregar Categoría</button>
+        </div>
+
+        <!-- Sección de Personalización -->
+        <div class="section">
+            <h2>2. Personaliza el diseño</h2>
+            <div class="custom-grid">
+                <div class="field-group">
+                    <label for="chartTitle">Título del Gráfico</label>
+                    <input type="text" id="chartTitle" value="Ventas Trimestrales 2024">
+                </div>
+                <div class="field-group">
+                    <label for="barColor">Color de las Barras</label>
+                    <input type="color" id="barColor" value="#3498db">
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Vista Previa -->
+        <div class="section">
+            <h2>3. Vista previa y descarga</h2>
+            <div class="chart-container" id="captureArea">
+                <canvas id="myBarChart"></canvas>
+            </div>
+            <button id="downloadChart" class="btn btn-download">Descargar como Imagen PNG</button>
+        </div>
+    </div>
+
+    <!-- Dependencias CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        let myChart;
+        const dataRowsContainer = document.getElementById('dataRows');
+        const addRowButton = document.getElementById('addRow');
+        const chartTitleInput = document.getElementById('chartTitle');
+        const barColorInput = document.getElementById('barColor');
+        const downloadButton = document.getElementById('downloadChart');
+
+        // Datos iniciales de ejemplo
+        let chartData = [
+            { label: 'Producto A', value: 450 },
+            { label: 'Producto B', value: 320 },
+            { label: 'Producto C', value: 610 },
+            { label: 'Producto D', value: 280 }
+        ];
+
+        function init() {
+            renderRows();
+            updateChart();
+            
+            addRowButton.addEventListener('click', () => {
+                chartData.push({ label: '', value: 0 });
+                renderRows();
+                updateChart();
+            });
+
+            chartTitleInput.addEventListener('input', updateChart);
+            barColorInput.addEventListener('input', updateChart);
+            
+            downloadButton.addEventListener('click', downloadAsImage);
+        }
+
+        function renderRows() {
+            dataRowsContainer.innerHTML = '';
+            chartData.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'input-group';
+                row.innerHTML = `
+                    <input type="text" placeholder="Nombre (ej. Enero)" value="${item.label}" oninput="updateData(${index}, 'label', this.value)">
+                    <input type="number" placeholder="Valor" value="${item.value}" oninput="updateData(${index}, 'value', this.value)">
+                    <button class="btn btn-remove" onclick="removeRow(${index})">Eliminar</button>
+                `;
+                dataRowsContainer.appendChild(row);
+            });
+        }
+
+        function updateData(index, field, value) {
+            if (field === 'value') {
+                chartData[index][field] = parseFloat(value) || 0;
+            } else {
+                chartData[index][field] = value;
+            }
+            updateChart();
+        }
+
+        function removeRow(index) {
+            if (chartData.length > 1) {
+                chartData.splice(index, 1);
+                renderRows();
+                updateChart();
+            } else {
+                alert('Debes tener al menos una categoría.');
+            }
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('myBarChart').getContext('2d');
+            const labels = chartData.map(d => d.label);
+            const values = chartData.map(d => d.value);
+            const color = barColorInput.value;
+            const title = chartTitleInput.value;
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Valores',
+                        data: values,
+                        backgroundColor: color + 'CC', // Añadir un poco de transparencia
+                        borderColor: color,
+                        borderWidth: 2,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: title,
+                            font: { size: 18, weight: 'bold' },
+                            padding: 20
+                        },
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f0f0f0' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function downloadAsImage() {
+            const area = document.getElementById('captureArea');
+            html2canvas(area, {
+                backgroundColor: '#ffffff',
+                scale: 2 // Alta calidad
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = (chartTitleInput.value || 'grafico') + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        // Arrancar la aplicación
+        init();
+    </script>
+</body>
+</html>
